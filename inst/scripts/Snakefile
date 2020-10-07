@@ -1,0 +1,369 @@
+configfile: "config.yaml"
+shell.prefix('export TMPDIR=%s;'%(config['temp_dir']))
+
+sampleRuns = dict()
+fastqs = []
+cases = []
+samples = []
+for (c,s,r,f) in zip(*glob_wildcards('inputs/{case}/{sample}/{runId}/{fastqBase}.fastq.gz')):
+    sampleRuns.setdefault(c, {}).setdefault(s, {}).setdefault(r, []).append(f)
+    fastqs.append('fastqc/%s/%s/%s_fastqc.zip'%(s,r,f))
+    samples.append(s)
+    cases.append(c)
+    
+def getCase(sample):
+    for c in sampleRuns:
+        if sample in sampleRuns[c]:
+            return(c)
+
+rule all:
+    input:
+        fastqs,
+        #expand('normed/{case}.norm.vcf.gz', case = cases),
+        #expand('depth/{sample}.nofilt.depth', sample = samples),
+        expand('pileup/{sample}.pileup', sample = samples),
+        expand('unzip/{sample}.vcf.gz.tbi', sample = samples),
+        expand('norm/{sample}.normSnp.vcf.gz.tbi', sample = samples),
+        expand('adep/{sample}.adep', sample = samples),
+        expand('fdist/{sample}.fdist', sample = samples),
+        expand('final/{sample}.final', sample = samples),
+        expand('recal/{sample}.recal.bam.alignMetrics', sample = samples),
+        expand('recal/{sample}.recal.bam.flagstat', sample = samples),
+        expand('keep/{sample}.keep.bai', sample = samples),
+        expand('keep/{sample}.keep.bam.alignMetrics', sample = samples),
+
+rule fastqc:
+    input:
+        lambda wildcards: 
+            expand("inputs/{case}/{sample}/{runId}/{stem}.fastq.gz", \
+                   case = getCase(wildcards.sample), \
+                   sample = wildcards.sample, \
+                   runId = wildcards.runId, \
+                   stem = sampleRuns[getCase(wildcards.sample)][wildcards.sample][wildcards.runId])
+    output:
+        html = "fastqc/{sample}/{runId}/{stem}.html",
+        zip = "fastqc/{sample}/{runId}/{stem}_fastqc.zip"
+    params: ""
+    wrapper:
+        "0.35.1/bio/fastqc"
+
+rule bwamem:
+    input:
+        reads = lambda wildcards: 
+            expand('inputs/{case}/{sample}/{runId}/{stem}.fastq.gz', \
+                   case = getCase(wildcards.sample), \
+                   sample = wildcards.sample, \
+                   runId = wildcards.runId, \
+                   stem = sampleRuns[getCase(wildcards.sample)][wildcards.sample][wildcards.runId])
+    output:
+        temp("mapped/{sample}.{runId}.bam")
+    log:
+        "logs/bwa_mem/{sample}.{runId}.log"
+    params:
+        index = config['genome_fasta'],
+        extra = r"-R '@RG\tID:{sample}_{runId}\tSM:{sample}\tPL:Illumina\tCN:UNC'",
+        sort = "picard",
+        sort_order = "queryname",
+        sort_extra = 'TMP_DIR="%s"'%config['temp_dir']
+    threads: 8
+    wrapper:
+        "0.35.1/bio/bwa/mem"
+
+rule mergeRuns:
+    input: lambda wildcards: 
+        expand('mapped/{sample}.{runId}.bam', \
+               sample = wildcards.sample, \
+               runId = sampleRuns[getCase(wildcards.sample)][wildcards.sample])
+    output: temp("merged/{sample}.bam")
+    params: "-n"
+    threads: 8
+    wrapper:
+        "0.35.1/bio/samtools/merge"
+
+rule markdup:
+    input:
+        "merged/{sample}.bam"
+    output:
+        bam = temp("markdup/{sample}.markdup.bam"),
+        metrics = "markdup/{sample}.markdup.markdupMetrics"
+    log:
+        "logs/picard/markdup/{sample}.markdup.log"
+    params:
+        "REMOVE_DUPLICATES=false",
+        "ASSUME_SORT_ORDER=queryname",
+        "CREATE_INDEX=false",
+        "TAGGING_POLICY=All",
+        'TMP_DIR="%s"'%config['temp_dir']
+    wrapper:
+        "0.35.1/bio/picard/markduplicates"
+
+rule sort:
+    input: "markdup/{sample}.markdup.bam"
+    output: temp("sorted/{sample}.sorted.markdup.bam")
+    params: "-m 2G"
+    threads: 8
+    wrapper:
+        "0.35.1/bio/samtools/sort"
+
+rule indexSorted:
+    input: "sorted/{sample}.sorted.markdup.bam"
+    output: temp("sorted/{sample}.sorted.markdup.bam.bai")
+    wrapper:
+        "0.35.1/bio/samtools/index"
+        
+rule gatkBqsr:
+    input:
+        bam = "sorted/{sample}.sorted.markdup.bam",
+        ref = config['genome_fasta'],
+        known = config['known_snp'],
+        baiPlaceholder = "sorted/{sample}.sorted.markdup.bam.bai"
+    output:
+        bam = "recal/{sample}.recal.bam",
+        bai = "recal/{sample}.recal.bai"
+    log:
+        "logs/gatk/bqsr/{sample}.log"
+    params:
+        extra = "",  # optional
+        java_opts = "-Xmx20G -XX:ParallelGCThreads=8", # optional
+    threads: 8
+    wrapper:
+        "0.49.0/bio/gatk/baserecalibrator"
+
+rule alignMetrics:
+    input:
+        bam = "recal/{sample}.recal.bam",
+        ref = config['genome_fasta']
+    output:
+        "recal/{sample}.recal.bam.alignMetrics"
+    log:
+        "logs/picard/collectalignmentsummarymetrics/{sample}.log"
+    wrapper:
+        "0.35.1/bio/picard/collectalignmentsummarymetrics"
+
+rule flagstat:
+    input: "recal/{sample}.recal.bam"
+    output: "recal/{sample}.recal.bam.flagstat"
+    wrapper:
+        "0.35.1/bio/samtools/flagstat"
+
+rule preFiltDep:
+    input: 
+        bam = "recal/{sample}.recal.bam",
+        bai = "recal/{sample}.recal.bai",
+    output: "depth/{sample}.nofilt.depth"
+    conda: "envs/depth.yaml"
+    shell:
+        "bedtools genomecov -dz -pc -ibam {input.bam} > {output}"
+
+rule subsetPairs:
+    input: 
+        bam = "recal/{sample}.recal.bam",
+        bed = config['overlap_exome'],
+        bai = "recal/{sample}.recal.bai",
+    output: temp("pairs/{sample}.sortedPairs.bam")
+    conda: "envs/subsetPairs.yaml"
+    threads: 8
+    shell:
+        "java -jar {config[viewPairs]} --bed {input.bed} "
+        "--samoutputformat BAM {input.bam} | "
+        "samtools view -F 3072 -f 2 -b | "
+        "picard SortSam SO=queryname I=/dev/stdin O={output}"
+
+rule keep:
+    input: "pairs/{sample}.sortedPairs.bam"
+    output: 
+        bam = "keep/{sample}.keep.bam",
+        bai = "keep/{sample}.keep.bai"
+    conda: "envs/keep.yaml"
+    shell:
+        "java -jar {config[samjdk]} --pair "
+        "-f scripts/highQualMap.java "
+        "--samoutputformat BAM {input} | "
+        "picard SortSam SO=coordinate CREATE_INDEX=true "
+        "I=/dev/stdin O={output.bam} "
+        "TMP_DIR={config[temp_dir]} "
+
+rule alignMetricsKeep:
+    input:
+        bam = "keep/{sample}.keep.bam",
+        ref = config['genome_fasta']
+    output:
+        "keep/{sample}.keep.bam.alignMetrics"
+    log:
+        "logs/picard/collectalignmentsummarymetrics/{sample}.keep.log"
+    wrapper:
+        "0.35.1/bio/picard/collectalignmentsummarymetrics"
+
+rule depthAll:
+    input:
+        bam = "keep/{sample}.keep.bam",
+        bai = "keep/{sample}.keep.bai"
+    output: "depth/{sample}.all.depth"
+    conda: "envs/depth.yaml"
+    shell:
+        "bedtools genomecov -dz -pc -ibam {input.bam} > {output}"
+
+rule depthFetTemp:
+    input:
+        bam = "keep/{sample}.keep.bam",
+        bai = "keep/{sample}.keep.bai"
+    output: temp("depth/{sample}.fet.depth.bam")
+    conda: "envs/depth.yaml"
+    shell:
+        "java -jar {config[samjdk]} "
+        "-e ' "
+        "int is = record.getInferredInsertSize(); "
+        "if (is < 0) is = is * -1; return is < 140; "
+        " ' "
+        "--samoutputformat BAM {input.bam} > {output} "
+
+rule depthFet:
+    input: "depth/{sample}.fet.depth.bam",
+    output: "depth/{sample}.fet.depth"
+    conda: "envs/depth.yaml"
+    shell:
+        "bedtools genomecov -dz -pc -ibam {input} > {output}"
+
+rule depthMatTemp:
+    input:
+        bam = "keep/{sample}.keep.bam",
+        bai = "keep/{sample}.keep.bai"
+    output: temp("depth/{sample}.mat.depth.bam")
+    conda: "envs/depth.yaml"
+    shell:
+        "java -jar {config[samjdk]} "
+        "-e ' "
+        "int is = record.getInferredInsertSize(); "
+        "if (is < 0) is = is * -1; return is > 166 && is < 1000; "
+        " ' "
+        "--samoutputformat BAM {input.bam} > {output} "
+
+rule depthMat:
+    input: "depth/{sample}.mat.depth.bam",
+    output: "depth/{sample}.mat.depth"
+    conda: "envs/depth.yaml"
+    shell:
+        "bedtools genomecov -dz -pc -ibam {input} > {output}"
+
+rule mpileup:
+    input: 
+        bam = "keep/{sample}.keep.bam",
+        ref = config['genome_fasta'],
+        tgt = config['overlap_exome'],
+    output: "pileup/{sample}.pileup"
+    conda: "envs/samtools.yaml"
+    shell:
+        "samtools mpileup -aa -f {input.ref} -d 100000 "
+        "--positions {input.tgt} -Q 20 {input.bam} > "
+        "{output} "
+
+rule alleleDep:
+    input: 
+        bam = "keep/{sample}.keep.bam",
+        ref = config['genome_fasta'],
+        tgt = config['overlap_exome'],
+    output: "calls/{sample}.bcf"
+    conda: "envs/bcftools.yaml"
+    shell:
+        "bcftools mpileup -f {input.ref} -a AD -Q 20 -d 50000 "
+        "-R {input.tgt} {input.bam} | bcftools call -m -A "
+        "-f GQ,GP -O b -o {output} "
+
+## Removes all sites without an alternate allele; could consider using
+## -V indels to only include snps but retain all sites in the exome
+rule normAndSubsetCalls:
+    input: "calls/{sample}.bcf"
+    output: "norm/{sample}.normSnp.vcf.gz"
+    conda: "envs/bcftools.yaml"
+    shell:
+        "bcftools norm -N -O u -m - {input} | "
+        "bcftools view -v snps -O z -o {output} "
+
+rule indexNormBcf:
+    input: "norm/{sample}.normSnp.vcf.gz"
+    output: "norm/{sample}.normSnp.vcf.gz.tbi"
+    conda: "envs/bcftools.yaml"
+    shell: "bcftools index --tbi {input} -o {output} "
+    
+rule getFragDist:
+    input: 
+        adep = "depth/{sample}.all.depth",
+        fdep = "depth/{sample}.fet.depth",
+        mdep = "depth/{sample}.mat.depth",
+        tgt = config['overlap_exome'],
+    output: "fdist/{sample}.fdist"
+    conda: "envs/r.yaml"
+    shell: 
+        "scripts/getFragDist.R -a {input.adep} -l {input.mdep} "
+        "-s {input.fdep} -r {input.tgt} -o {output}"
+
+rule getAlleleDep:
+    input: "norm/{sample}.normSnp.vcf.gz"
+    output: "adep/{sample}.adep"
+    conda: "envs/r.yaml"
+    shell: "scripts/getAlleleCounts.R -v {input} -o {output}"
+
+rule combineAdepFdist:
+    input:
+        adep = "adep/{sample}.adep",
+        fdst = "fdist/{sample}.fdist"
+    output: "final/{sample}.final"
+    params: 
+        tdep = 0,
+        mdep = 0,
+    conda: "envs/r.yaml"
+    shell:
+        "scripts/getAdepFdist.R -a {input.adep} -f {input.fdst} "
+        "-t {params.tdep} -m {params.mdep} -o {output} "
+
+rule freebayes:
+    input:
+        ref = config['genome_fasta'],
+        samples = lambda wildcards: 
+            expand('keep/{sample}.keep.bam', \
+                   case = wildcards.case, \
+                   sample = sampleRuns[wildcards.case]),
+        bai = lambda wildcards: 
+            expand('keep/{sample}.keep.bai', \
+                   case = wildcards.case, \
+                   sample = sampleRuns[wildcards.case]),
+        #cnvMap = config['samplePloidy'], also use --pooled-discrete
+        targets = config['overlap_exome'],
+    output:
+        temp("calls/{case}.vcf")
+    log:
+        "logs/freebayes/{case}.log"
+    params:
+        extra = "--genotype-qualities \
+                 --strict-vcf \
+                 --min-alternate-count 5 \
+                 --standard-filters \
+                 --report-genotype-likelihood-max \
+                 --use-mapping-quality",
+        chunksize = 100000,
+    threads: 8
+    conda: "envs/freebayes.yaml"
+    shell:
+        "(" 
+        "freebayes-parallel " 
+        "<(fasta_generate_regions.py {input.ref}.fai {params.chunksize}) "
+        "{threads} "
+        "-f {input.ref} "
+        "--targets {input.targets} {params.extra} " 
+        "{input.samples} > {output[0]}"
+        ") "
+        " > {log} 2>&1"
+
+rule compressVcf:
+    input: "calls/{stem}.vcf"
+    output: temp("calls/{stem}.vcf.gz")
+    wrapper: "0.36.0/bio/vcf/compress"
+
+rule normVcf:
+    input: "calls/{stem}.vcf.gz"
+    output: "normed/{stem}.norm.vcf.gz"
+    params: "-m - -O z"
+    wrapper: "0.44.2/bio/bcftools/norm"
+
+
+

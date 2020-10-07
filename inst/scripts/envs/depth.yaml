@@ -1,0 +1,6 @@
+channels:
+- bioconda
+- conda-forge
+dependencies:
+- openjdk=8.0.192
+- bedtools=2.29.2

@@ -1,0 +1,19 @@
+The analysis for identifying maternal versus fetal fragments for case 3 was done
+out of band with the rest of the analysis. It uses the same Snakemake directory,
+working in a user-created subdirectory, 'matFetFrags'.
+
+The scripts assume the user has installed correctly samtools, picard, and R w/
+the Rsamtools, data.table, and stringi packages.
+
+The analysis can be repeated as follows:
+
+1. Use the 'informativeSites.R' script to identify the sites with unique
+   maternal or fetal heterozygosity. (creates 'infomrativeSites.bed')
+2. Run 'runPileup.sh' creating a pileup containing query names (read names) for
+   each site in 'informativeSites.bed' (creates 'informativeReads.pileup')
+3. Extract and separate reads from 'informativeReads.pileup' with
+   'subsetReads.sh' (creating 'maternalReads.txt' and 'fetalReads.txt')
+4. Subset reads from the filtered set ('keep/keep/FES-0034-4.keep.bam'), into
+   'maternalReads.bam' and 'fetalReads.bam' using 'subsetReads.sh'
+5. Create the c3MatFetReads object using 'c3MatFetReads.R' script
+

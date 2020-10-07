@@ -1,0 +1,8 @@
+channels:
+- bioconda
+- conda-forge
+dependencies:
+- bioconductor-variantannotation=1.32.0
+- r-data.table=1.12.8
+- r-docopt=0.6.1
+- r-base=3.6.2

@@ -1,0 +1,12 @@
+# This file should contain everything to configure the workflow on a global scale.
+# In case of sample based data, it should be complemented by a samples.tsv file that contains
+# one row per sample. It can be parsed easily via pandas.
+genome_fasta: /pathToMyDir/Refs/GRCh38Primary.fna
+temp_dir: /pathToMyDir/cffDNA/prelimData/tmp
+known_snp: /pathToMyDir/Refs/dbsnp/GCF_000001405.38.gz
+agilent_exome: /pathToMyDir/Refs/S03723314/S03723314_Covered.bed
+overlap_exome: /pathToMyDir/Refs/idtV1-agilentV7-exome-overlap-hg38.bed
+samplePloidy: /pathToMyDir/cffDNA/prelimData/samplePloidy.txt
+jannoDB: /pathToMyDir/Refs/data/hg38_ucsc.ser
+viewPairs: /home/dfiler/jvarkit/dist/samviewwithmate.jar
+samjdk: /home/dfiler/jvarkit/dist/samjdk.jar

@@ -1,0 +1,7 @@
+channels:
+- bioconda
+- conda-forge
+dependencies:
+- samtools=1.10
+- openjdk=11.0.1
+- picard=2.22.2

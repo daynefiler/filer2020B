@@ -1,0 +1,6 @@
+channels:
+- bioconda
+- conda-forge
+dependencies:
+- openjdk=8.0.192
+- picard=2.22.2

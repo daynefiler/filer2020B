@@ -1,0 +1,372 @@
+\documentclass{article}
+\usepackage{geometry}
+\geometry{a4paper, margin=0.75in}
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{multicol}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{siunitx}
+\usepackage{xr}
+\externaldocument[sup:]{supplement}
+\usepackage[hidelinks]{hyperref}
+\usepackage{cleveref}
+\usepackage{authblk}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{colortbl}
+\usepackage[]{caption}
+\sisetup{output-exponent-marker=\ensuremath{\mathrm{e}}}
+
+%% Supplemental figure notation
+\renewcommand\thefigure{S\arabic{figure}}
+\renewcommand\thetable{S\arabic{table}}
+
+%% shortcuts
+\newcommand{\pr}[2][]{\text{Pr}_{#1}\left\{#2\right\}}
+\newcommand{\E}[2][]{\text{E}_{#1}\left[#2\right]}
+\newcommand{\Var}[2][]{\text{Var}_{#1}\left(#2\right)}
+\newcommand\I[1]{\text{I}\left(#1\right)}
+
+\setlength{\parindent}{0em}
+\setlength{\parskip}{1ex}
+
+\begin{document}
+
+<<echo=FALSE,results='hide',warning=FALSE,message=FALSE>>=
+library(knitr)
+knit_theme$set("bclear")
+knitr::opts_chunk$set(fig.path = "fig-",
+                      dev = c("pdf", "png"),
+                      dpi = 300,
+                      fig.width = 3.38,
+                      fig.height = 2.5,
+                      fig.show = 'hide',
+                      dev.args = list(pdf = list(pointsize = 8),
+                                      png = list(pointsize = 8)),
+                      background = "#F7F7F7",
+                      warning = FALSE,
+                      message = FALSE,
+                      error = FALSE,
+                      results = 'hide')
+library(filer2020B)
+library(xtable)
+library(dlfUtils)
+library(MASS)
+options(xtable.table.placement = "")
+options(xtable.include.rownames = FALSE)
+options(xtable.sanitize.text.function = I)
+options(xtable.booktabs = TRUE)
+@
+
+
+\title{Supplemental Information}
+\author{Dayne Filer}
+\maketitle
+
+\tableofcontents
+
+\newpage
+\section{Notation and algorithm}
+
+Represent maternal and fetal genotype pairs, given by the random variable $G$, with capital and lowercase letters, where `A' and `B' represent the major and minor alleles (e.g. `AAab' represents the fetus uniquely heterozygous for the minor allele).
+
+Let $X,Y$ be random variables for major and minor allele read counts.
+Define the fetal fraction and PMAR as the random variables $F$ and $M$. Then, by definition, $\E{M} = \E{Y/(X + Y)}$.
+It's easily proven:
+
+\begin{align}
+\text{E}[M \rvert G = \text{AAab}, F = f] &= \frac{f}{2} \label{eq:mAAab}\\
+\text{E}[M \rvert G = \text{ABaa}, F = f] &= \frac{1 - f}{2} \label{eq:mABaa} \\
+\text{E}[M \rvert G = \text{ABab}, F = f] &= \frac{1}{2} \label{eq:mABab} \\
+\text{E}[M \rvert G = \text{ABbb}, F = f] &= \frac{1 + f}{2} \label{eq:mABbb} \\
+\text{E}[M \rvert G = \text{BBab}, F = f] &= 1 - \frac{f}{2} \label{eq:mBBab}
+\end{align}
+We can then rearrange the \Cref{eq:mAAab,eq:mBBab} and solve for the expected fetal fraction in terms of the PMAR:
+\begin{align}
+\text{E}[F \rvert G = \text{AAab}, M = m] &= 2m \label{eq:fAAab} \\
+\text{E}[F \rvert G = \text{BBab}, M = m] &= 2 - 2m \label{eq:fBBab}
+\end{align}
+
+Given the average population allele frequency for sequenced variants, we know the probability distribution of maternal/fetal genotypes under Hardy-Weinberg, $\pr{G = g}$.
+As shown above, given the fetal fraction, $F = f$, we know the expected PMAR for each genotype, $M$.
+We observe the major and minor allele reads, $\mathbb{X}$ and $\mathbb{Y}$ respectively, and wish to estimate $\mathbb{G}, \hat{\mathbb{G}}$.
+
+We employ an empirical Bayesian expectation-maximization algorithm to identify loci with unique fetal heterozygosity, i.e. $g \in \{\text{AAab}, \text{BBab}\}$.
+We pick reasonable starting values for the fetal fraction, $F = f$, and the average minor allele frequency, then iteratively update the expected allele distribution and expected PMAR values until some convergence:
+
+\begin{enumerate}
+
+  \item Initialize the genotype probabilities, $p_g^* = \pr{G = g}$, and the expected PMAR, $m_g^* = m_g$, based on reasonable estimates for the average minor allele frequency and fetal fraction
+
+  \item Update $\hat{\mathbb{G}}$:
+  \begin{equation}
+    \hat{g}_i = \mathop{\text{argmax}}\limits_{g \in G}\left\{p_g^*\mathcal{L}(g \rvert m_g^*,x_i,y_i)\right\}, Y_{i} \sim \text{Bin}(x_i + y_i, m_g^*)
+  \end{equation}
+
+  \item Update the genotype probabilities:
+  \begin{equation}
+    p_g^* = \frac{\sum_i \I{\hat{g} = g} + N\pr{G = g} - 1}{\sum_g\left\{\sum_i \I{\hat{g} = g} + N\pr{G = g} - 2\right\}}
+  \end{equation}
+  where $N$ is the weight given to the initial estimate of the genotype probability, $\pr{G = g}$.
+
+  \item Update the expected PMAR:
+  \begin{equation}
+    m_g^* = \frac{\sum_i y_i\I{\hat{g} = g} + Nm_g - 1}{\sum_i(x_i + y_i)\I{\hat{g} = g} + N - 2}
+  \end{equation}
+  where $N$ is the weight given to the initial estimate of the PMAR, $m_g$.
+
+  \item Continue updating $\hat{\mathbb{G}}$, $p_g^*$, and $m_g^*$ until $\hat{\mathbb{G}}$ converges.
+
+  \item For all loci $j$, such that $\hat{g} \in \{\text{AAab}, \text{BBab}\}$, calculate $\hat{f}_j$:
+  \begin{equation}
+    \hat{f}_j =
+      \begin{cases}
+        \displaystyle\frac{2y_j}{x_j + y_j}, & \hat{g} = AAab \\[15pt]
+        2 - \displaystyle\frac{2y_j}{x_j + y_j}, & \hat{g} = BBab
+      \end{cases}
+  \end{equation}
+
+  \item Let
+  \begin{equation}
+    \hat{f} = \text{median}\left(\hat{f}_j\right)
+  \end{equation}
+
+  \item Calculate the expected PMAR using the fetal fraction estimate,
+  \begin{equation}
+    m_g = \E{M|\hat{f},g}
+  \end{equation}
+
+  \item Finally, for all loci, $i$, estimate $\hat{g}_i \in \hat{\mathbb{G}}$,
+  \begin{equation}
+  \hat{g}_i = \mathop{\text{argmax}}\limits_{g \in G}\left\{\mathcal{L}(g \rvert m_g,x_i,y_i)\right\}, Y_{i} \sim \text{Bin}(x_i + y_i, m_g)
+  \end{equation}
+
+\end{enumerate}
+
+\newpage
+\section{Setup R session}
+
+<<eval=FALSE,echo=TRUE>>=
+library(filer2020B)
+library(dlfUtils)
+@
+
+\section{Estimate genotypes from cell-free samples}
+
+<<eval=FALSE>>=
+data(gt)
+gt[ , udep := ref + alt]
+gt[ , use := udep > 80 & ref > 5 & alt > 5]
+for (s in c("S1", "S2", "FES-0034-4")) {
+  gt[smp == s & use,
+     c("ff", "gtCall", "gtLike") := callSmpl(alt, udep, .N, median(sdep/ldep))]
+}
+@
+
+<<echo=FALSE,eval=TRUE>>=
+gt <- readRDS("../inst/noBuild/gtWithCalls.rds")
+## Save median read depth & fetal fraction estimates
+smry <- gt[(use), .(md = median(udep), ff = ff[1]), by = smp]
+setkey(smry, smp)
+saveRDS(smry, "data-depth.rds")
+@
+
+<<genoHist,fig.height=2,eval=TRUE,fig.width=2.25,fig.height=2>>=
+with(gt[use & smp == "S1"], cfPltFreqHist(alt, udep, gtCall, ff = ff[1]))
+mtext("Case 1", side = 2)
+addfiglab("A", cex = 1.5)
+
+data(rs140468248)
+data(GenoMeta)
+with(gt[use & smp == "S2"], cfPltFreqHist(alt, udep, gtCall, ff = ff[1]))
+oiCall <- gt[varid == rs140468248, gtCall]
+oiPmar <- gt[varid == rs140468248, alt/(ref + alt)]
+abline(v = oiPmar, col = GenoMeta$color[GenoMeta$name == oiCall])
+text(x = oiPmar,
+     y = grconvertY(0.75, "nfc"),
+     "rs140468248",
+     srt = 90,
+     adj = c(0.5, 1.5),
+     col = GenoMeta$color[GenoMeta$name == oiCall])
+mtext("Case 2", side = 2)
+addfiglab("B", cex = 1.5)
+
+with(gt[use & smp == "FES-0034-4"], cfPltFreqHist(alt, udep, gtCall, ff = ff[1]))
+mtext("Case 3", side = 2)
+addfiglab("C", cex = 1.5)
+@
+
+<<genoLgnd,fig.width=6.76,fig.height=0.4,eval=TRUE>>=
+par(mar = rep(0, 4))
+plot.new()
+legend(x = grconvertX(0.5, from = "ndc"),
+       y = grconvertY(0.5, from = "ndc"),
+       legend = GenoMeta$name,
+       horiz = TRUE,
+       lwd = 4,
+       col = GenoMeta$color,
+       xjust = 0.5,
+       yjust = 0.5,
+       xpd = NA,
+       bty = "n")
+@
+
+\begin{figure}
+  \centering
+  \includegraphics{fig-genoHist-1.pdf}%
+  \includegraphics{fig-genoHist-2.pdf}%
+  \includegraphics{fig-genoHist-3.pdf}
+  \includegraphics{fig-genoLgnd-1.pdf}
+\end{figure}
+
+\newpage
+\section{Distribution of fragment lengths}
+
+For Case 3, where we also have direct maternal and fetal exome sequencing, we can attempt to identify maternal and fetal reads in the cell-free exome.
+We identify maternal (or fetal) reads by identifying sites with unique heterozygosity in the mother (or fetus), then only interrogating the reads that support the unique allele.
+
+<<f34FragLen,eval=TRUE,fig.height=2.25>>=
+data(c3MatFetReads)
+matDen <- density(c3MatFetReads[source == "maternal", isize])
+fetDen <- density(c3MatFetReads[source == "fetal",    isize])
+par(mar = c(4, 4, 1, 1))
+plot.new()
+plot.window(xlim = range(c(matDen$x, fetDen$x)), range(c(matDen$y, fetDen$y)))
+lines(matDen, col = "darkblue", lwd = 2)
+lines(fetDen, col = "darkorange", lwd =2)
+axis(side = 1)
+title(xlab = "Fragment length (read-pair insert size)", ylab = "Density")
+addfiglab("A", cex = 1.5)
+matCdf <- ecdf(c3MatFetReads[source == "maternal", isize])
+fetCdf <- ecdf(c3MatFetReads[source == "fetal",    isize])
+plot.new()
+xv <- seq(50, 300, 1)
+plot.window(xlim = range(xv), ylim = 0:1)
+points(x = xv, y = matCdf(xv), col = "darkblue", lwd = 2, type = "l")
+points(x = xv, y = fetCdf(xv), col = "darkorange", lwd = 2, type = "l")
+addfiglab("B", cex = 1.5)
+axis(side = 1)
+axis(side = 2)
+title(xlab = "Fragment length (read-pair insert size)",
+      ylab = "Cumulative distribution")
+@
+
+<<fragLgnd,eval=TRUE,fig.height=0.4>>=
+par(mar = rep(0, 4))
+plot.new()
+legend(x = grconvertX(0.5, from = "ndc"),
+       y = grconvertY(0.5, from = "ndc"),
+       legend = c("Maternal", "Fetal"),
+       horiz = TRUE,
+       lwd = 2,
+       col = c("darkblue", "darkorange"),
+       xjust = 0.5,
+       yjust = 0.5,
+       xpd = NA,
+       bty = "n")
+@
+
+\begin{figure}
+  \centering
+  \includegraphics{fig-f34FragLen-1.pdf}%
+  \includegraphics{fig-f34FragLen-2.pdf}
+  \includegraphics{fig-fragLgnd-1.pdf}
+\end{figure}
+
+We can also evaluate the distribution of proprtion of fragments with insert sizes less than 140.
+
+<<pmarBySratio,eval=TRUE,fig.width=2.25,fig.height=2.25>>=
+gt[ , pmar := alt/(alt + ref)]
+gt[ , sratio := sdep/adep]
+pltSratioByPmar <- function(smpNm) {
+  par(mar = c(4, 4, 1, 1))
+  with(gt[gtCall == "AAab" & smp == smpNm], {
+    plot(pmar ~ sratio,
+         xlab = "Proportion of fragments < 140 bp",
+         ylab = "PMAR",
+         pch = 16,
+         cex = 0.5,
+         col = col2alpha('darkgray'),
+         bty = "n")
+  })
+  with(gt[gtCall == "AAab" & smp == smpNm], {
+    contour(kde2d(x = sratio, y = pmar, n = 500),
+            nlevels = 25,
+            add = TRUE,
+            drawlabels = FALSE,
+            col = "darkblue")
+  })
+}
+pltSratioByPmar("S1")
+addfiglab("A", cex = 1.5)
+pltSratioByPmar("S2")
+addfiglab("B", cex = 1.5)
+pltSratioByPmar("FES-0034-4")
+addfiglab("C", cex = 1.5)
+@
+
+\begin{figure}
+  \centering
+  \includegraphics{fig-pmarBySratio-1.pdf}%
+  \includegraphics{fig-pmarBySratio-2.pdf}%
+  \includegraphics{fig-pmarBySratio-3.pdf}
+\end{figure}
+
+\newpage
+\section{Calculate call concordance between cell-free and direct for Case 3}
+
+<<eval=TRUE,results='markup'>>=
+c3 <- gt[(smp == "FES-0034-0" & udep > 30 & gt %in% c("0/0", "0/1", "1/1")) |
+           (smp == "FES-0034-1" & udep > 30 & gt %in% c("0/0", "0/1", "1/1")) |
+           (use & smp == "FES-0034-4")]
+c3[ , mrg := substr(gtCall, 3, 4)]
+c3[ , mrg := c("0/0", "0/1", "1/1")[match(mrg, c("aa", "ab", "bb"))]]
+c3[is.na(gtCall), mrg := gt]
+c3 <- dcast(c3, varid ~ smp, value.var = "mrg")
+setnames(c3, c("varid", "fet", "mat", "cff"))
+c3 <- c3[ , .N, by = .(mat, fet, cff)]
+c3[!is.na(mat) & !is.na(fet) & !is.na(cff), ][order(mat, fet, cff)]
+## call by call matrix, cell-free calls in columns, fetal in rows
+dcast(c3[!is.na(cff) & !is.na(fet)], fet ~ cff,
+      value.var = "N", fun.aggregate = sum)
+@
+
+<<echo=FALSE>>=
+saveRDS(c3, "data-c3Calls.rds")
+@
+
+\newpage
+\section{Binomial distribution bounds}
+
+<<binDist,eval=TRUE>>=
+pltExpMAF(500)
+addfiglab("A", cex = 1.5)
+pltMissclass()
+addfiglab("B", cex = 1.5)
+@
+
+\begin{figure}
+  \centering
+  \includegraphics{fig-binDist-1.pdf}%
+  \includegraphics{fig-binDist-2.pdf}
+  \includegraphics{fig-genoLgnd-1.pdf}
+\end{figure}
+
+\section{Snakemake file}
+
+Note, Snakemake file and all accessory files contained within the filer2020B package `inst' directory.
+
+<<eval=FALSE,code=readLines("../inst/scripts/Snakefile"),highlight=FALSE>>=
+@
+
+\section{Script to produce package data}
+
+<<eval=FALSE,code=readLines("../inst/scripts/makePckgData.R")>>=
+@
+
+The \texttt{c3MatFetReads} object was created by the scripts contained in the `inst/scripts/matFetReads` package subdirectory.
+
+\end{document}
