@@ -34,7 +34,8 @@ cfPltFreqHist <- function(marVec, depVec, gtpVec, legend = FALSE, ff = NULL) {
     ylim <- NULL
   }
 
-  par(oma = c(ifelse(legend, 3, 0), 0, 0, 0), mar = c(4, 2, 1, 1))
+  if (legend) par(oma = c(3, 0, 0, 0))
+  par(mar = c(4, 2, 1, 1))
   addHist <- function(x, gVec, g, col) {
     hist(x[gVec == g], breaks = b, col = col, add = TRUE, border = NA)
   }
