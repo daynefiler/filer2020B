@@ -14,12 +14,17 @@
 \usepackage[dvipsnames]{xcolor}
 \usepackage[colorlinks=true,urlcolor=darkgray,implicit=false]{hyperref}
 \usepackage{cleveref}
+\usepackage[defaultcolor=red]{changes}
 
 % Formatting
 \setlength\parindent{0pt}
 \setlength{\parskip}{1em}
 \usepackage{setspace}
 %\doublespacing
+
+% rev2
+\definechangesauthor[color=purple]{r2}
+\setauthormarkuptext{}
 
 % Run texcount on tex-file and write results to a sum-file
 \immediate\write18{texcount \jobname.tex -out=\jobname.sum}
@@ -46,7 +51,7 @@ setkey(c3tbl, fet)
 
 \begin{document}
 
-\title{Noninvasive prenatal exome sequencing inefficient for detecting single-gene disorders -- problems and possible solutions}
+\title{\replaced{Noninvasive prenatal exome sequencing diagnostic utility limited by sequencing depth and fetal fraction}{Noninvasive prenatal exome sequencing inefficient for detecting single-gene disorders -- problems and possible solutions}}
 
 \author[1,2,*]{Dayne L Filer}
 \author[1]{Piotr A Mieczkowski}
@@ -67,12 +72,12 @@ setkey(c3tbl, fet)
 
 \linenumbers
 
-\section{Bulleted statements}
+\section*{Bulleted statements}
 
 What's already known about this topic?
 \begin{itemize}
     \item Sequencing-based noninvasive testing detects large copy number abnormalities and some single-gene disorders
-    \item Fetal exome sequencing (ES) provides 20\% diagnostic yield for structural abnormalities after normal karyotype \& microarray
+    \item Fetal exome sequencing (ES) provides \added{10-}20\% diagnostic yield for structural abnormalities after normal karyotype \& microarray
 \end{itemize}
 
 What does this study add?
@@ -98,22 +103,25 @@ Alternatively, we suggest a more targeted path forward for noninvasive prenatal 
 
 The beneficial health outcomes from newborn screening programs (NBS) are indisputable.
 We envision future NBS will begin with prenatal genetic testing to enable care in the immediate newborn period, and open up new possibilities for \textit{in utero} and genetic therapies.
-During pregnancy, placental DNA is released into maternal circulation, enabling noninvasive interrogation of fetal genetics (noninvasive prenatal testing, NIPT).
-NIPT has a well-established clinical utility in screening for common chromosomal abnormalities such as Down syndrome with high sensitivity and specificity\cite{mackie:2017aa}.
+During pregnancy, placental DNA \added{(cell free fetal DNA, cffDNA)} is released into maternal circulation, enabling noninvasive interrogation of fetal genetics\deleted{(noninvasive prenatal testing, NIPT)}.
+\replaced{cffDNA has}{NIPT has a} well-established clinical utility in screening for common chromosomal abnormalities such as Down syndrome with high sensitivity and specificity\cite{mackie:2017aa}.
 More recently, efforts have demonstrated sequencing-based testing for \textit{de novo} pathogenic variants in a list of 30 genes associated with dominant Mendelian disorders \cite{zhang:2019aa} and PCR-based testing for a small number of recessive Mendelian disorders \cite{tsao:2019ab}.
 Using relative haplotype dosage analysis (RHDO) \cite{lo:2010aa}, multiple groups have successfully diagnosed single gene disorders \cite{hui:2017aa,vermeulen:2017aa,jang:2018aa} including a new offering of noninvasive prenatal diagnosis for cystic fibrosis in the UK Public Health Service \cite{chandler:2020aa}.
 RHDO typically relies on collecting parental, and ideally proband, genetic information to resolve parental haplotypes; Jang et al. demonstrated success in diagnosing Duchenne muscular dystrophy by estimating haplotypes solely from maternal long-read sequencing \cite{jang:2018aa}.
-Scotchman et al. provide an excellent review summarizing the history of noninvasive testing \cite{scotchman:2020aa}.
+Scotchman et al. provide a \replaced{more detailed discussion about the development of noninvasive fetal genetic testing, and we refer intereseted readers to their work}{n excellent review summarizing the history of noninvasive testing} \cite{scotchman:2020aa}.
 To date, no one has reported reliable fetal genotyping purely from maternal cell-free DNA using a sequencing-based approach.
 
 To begin NBS with prenatal genetic testing, we believe we first need a reliable noninvasive test only requiring a maternal sample.
 Others could reasonably argue the availability of carrier screening, and the immeasurably small risk of invasive testing \cite{salomon:2019aa}, removes the need for noninvasive testing.
-Such an argument, however, dismisses (1) the ethical and practical issues surrounding the necessity of involving the biological father, (2) the fact that many genetic disorders arise due to \textit{de novo} mutations, and (3) the understandable fear and apprehension around invasive testing (especially for rare conditions).
+Such an argument, however, dismisses (1) the ethical and practical issues surrounding the necessity of involving the biological father, (2) the fact that many genetic disorders arise due to \textit{de novo} mutations, \deleted{and} (3) the understandable fear and apprehension around invasive testing (especially for rare conditions)\added{, and (4) the cost and limited availability of invasive procedures}.
 Additionally, we believe the prenatal diagnosis community should focus work on sequencing-based (as opposed to PCR-based) approaches.
 Sequencing generalizes across disorders more easily than PCR techniques, allows multiplexing to a degree not feasible using PCR, and will only continue to decrease in cost.
 
-Snyder et al. provide a review of previous attempts to perform noninvasive fetal genome sequencing, illustrating the cost-infeasibility and suggesting more targeted approaches such as exome sequencing (ES) \cite{snyder:2013aa,lo:2010aa,kitzman:2012aa,fan:2012aa}.
-As an exploratory exercise, we performed ES on cell-free DNA (cfES) from three pregnant women with singleton fetuses.
+\added{In research settings, three groups have performed/attempted fetal genome sequencing from cell-free DNA \cite{lo:2010aa,kitzman:2012aa,fan:2012aa}.}
+\added{In a review of noninvasive fetal sequencing work,} Snyder et al. \replaced{illustrate}{provide a review of previous attempts to perform noninvasive fetal genome sequencing, illustrating} the cost-infeasibility and \replaced{suggest}{suggesting} more targeted approaches such as exome sequencing (ES) \cite{snyder:2013aa}.
+As an exploratory exercise, we performed ES on cell-free DNA (cfES) from three pregnant women.
+\added{All three women had singleton pregnancies with suspected genetic conditions identified by a genetic counselor.
+We hypothesized cfES would allow us to identify genetic etiologies.}
 
 \section{Methods}
 
@@ -121,10 +129,12 @@ As an exploratory exercise, we performed ES on cell-free DNA (cfES) from three p
 Genetic counselors identified pregnant women with suspected genetic disorders based either on family history or fetal sonographic findings.
 We enrolled three women, blinded to their family history and sonographic findings.
 All participants were consented and enrolled at UNC Hospitals by certified genetic counselors with approval from the UNC Institutional Review Board (IRB Number: 18-2618); we do not include any identifying information in this manuscript.
+\added{Either due to family history of genetic condition or because of identified fetal abnormalities in the current pregnancy, the patients all pursued genetic workup through the genetic counselors separate from their participation in this study.
+After we completed our analyses, we obtained records of their genetic workup including diagnostic single gene sequencing of P3H1 (Case 2) and multiplex ligation-dependent probe amplification of ATP7A exons 1-23 (Case 1).}
 
 \subsection{Exome sequencing and analysis}
 We collected cell-free DNA from maternal plasma, prepared sequencing libraries for the Illumina platform, and performed exome capture using the IDT xGen Exome Research Panel v1.0 (Cases 1 \& 2) or Agilent SureSelect Human All Exon v7 (Case 3).
-We processed the data using a novel analytic pipeline developed in Snakemake \cite{koster:2012aa} using Anaconda environments for reproducibility (provided in supplemental materials).
+\replaced{Because existing germline variant calling pipelines would not account for the combination of read fractions from maternal and fetal DNA, w}{W}e processed the data using a novel analytic pipeline developed in Snakemake \cite{koster:2012aa} using Anaconda environments for reproducibility (provided in supplemental materials).
 Briefly, sequencing reads were aligned to hg38 (excluding alternate contigs) using BWA-MEM \cite{li:2013ab}, then base quality scores were re-calibrated using GATK4 \cite{mckenna:2010aa,van-der-auwera:2013aa,poplin:2018aa}.
 We only retained non-duplicate, properly-paired reads with unambiguous mapping and mapping quality >30 for each read.
 We called variants using bcftools \cite{li:2011aa}, requiring basepair quality scores >20.
@@ -182,7 +192,8 @@ In Case 3, in addition to cfES, we performed exome sequencing (ES) on fetal, mat
 Based on previous work demonstrating the differential length of maternal and fetal fragments \cite{chan:2004aa,chan:2016aa,jiang:2016ab,rabinowitz:2019aa}, we interrogated the distribution of presumed maternal and fetal reads (\cref{fig:c3fragLen}).
 We identified maternal and fetal reads by identifying sites with unique heterozygosity in the direct maternal and fetal ES results; at the informative sites, we extracted reads supporting the allele unique to the mother or fetus.
 In total, we identified \Sexpr{c3MatFetReads[source == "maternal", formatC(.N, big.mark = ",")]} maternal reads and \Sexpr{c3MatFetReads[source == "fetal", formatC(.N, big.mark = ",")]} fetal reads.
-We found, as others have, a higher proportion of fetal reads falling below 150 basepairs; however, we also observed a slightly higher proportion of longer reads, as well.
+We found, as others have, a higher proportion of fetal reads falling below 150 basepairs; \replaced{however, we also note the increased observed dispersion of fetal read length led to a higher proportion of fetal reads longer than 200 basepairs (\cref{fig:c3fragLen}).}{however, we also observed a slightly higher proportion of longer reads, as well.}
+\added{Limited to the single case, we cannot comment on the significance or generalizability of the increased dispersion.}
 
 Rabinowitz et al. proposed the Hoobari method which incorporates fragment lengths into fetal genotype estimates \cite{rabinowitz:2019aa}, finding the difference in accuracy varied from -0.25\% to 1.89\% when using versus not using fragment length in their exome analyses.
 To explore the utility of correcting for fragment length in our analysis, we interrogated the PMAR as a function of the short read proportion (fraction of reads with insert sizes less than 140 basepairs; \cref{fig:pmarBySratio}).
@@ -205,7 +216,7 @@ We provide the complete set of calls within the R package, and a summary within 
    & bb & \Sexpr{c3tbl["1/1", get("0/0")]} & \Sexpr{c3tbl["1/1", get("0/1")]} & \Sexpr{c3tbl["1/1", get("1/1")]} \\
   \bottomrule
   \end{tabular}
-  \caption{Case 3 fetal versus cell-free calls. 'a' represents the major allele; 'b' represents the minor allele. Sites with cell-free estimates and reliable direct fetal calls included (reliable defied as passing all quality checks and having a total sequencing depth greater than 30).}
+  \caption{Case 3 fetal versus cell-free calls. `a' represents the major allele; `b' represents the minor allele. Sites with cell-free estimates and reliable direct fetal calls included (reliable defied as passing all quality checks and having a total sequencing depth greater than 30).}
   \label{tab:c3calls}
 \end{table}
 
@@ -233,11 +244,19 @@ We provide the complete set of calls within the R package, and a summary within 
   \includegraphics{fig-pmarBySratio-1.pdf}%
   \includegraphics{fig-pmarBySratio-2.pdf}%
   \includegraphics{fig-pmarBySratio-3.pdf}
-  \caption{Proportion of minor allele reads (PMAR) as a funciton of the short read proprtion for genotypes estimated as `AAab.' Short reads defined as fragments less than 140 basepairs. [A-C] show Cases 1 to 3, respectively. Gray points show the individual sites; blue contour lines show the two-dimensional distribution of values.}
+  \caption{Proportion of minor allele reads (PMAR) as a function of the short read proportion for genotypes estimated as `AAab.' Short reads defined as fragments less than 140 basepairs. [A-C] show Cases 1 to 3, respectively. Gray points show the individual sites; blue contour lines show the two-dimensional distribution of values.}
   \label{fig:pmarBySratio}
 \end{figure}
 
 \section{Discussion}
+
+\added{
+To move NBS into the \replaced[id=r2]{fetal}{neonatal} period we must develop noninvasive methodologies agnostic to paternity.
+\added[id=r2]{Having prenatal genetic diagnoses will allow for optimized care in the immediate newborn period and the further development of \emph{in utero} therapies.}
+Invasive testing confers very minimal risk when performed by properly trained specialists \cite{salomon:2019aa}, but procedure costs and limited availability prohibit universal access for patients.
+We must also recognize the ethical issues with requiring the biological father in neonatal genetic screening programs\replaced[id=r2]{; many family structures do not include the biological father and requiring both parents to miss work for multiple appointments may exclude low-income parents.}{, including the financial burden of the father missing work for additional appointments.}
+From our own clinical experience, we find women hesitant to undergo invasive testing even in the presence of severe fetal findings.
+}
 
 Without the ability to reliably exclude maternal DNA fragments, noninvasive sequencing-based methods to genotype the fetus either require additional sequencing of parental samples or distinguishing genotypes by the proportion of minor allele reads (PMAR).
 Here, we make no attempt to utilize parental genetic information and demonstrate the difficulty of inferring the genotypes directly from the PMAR.
@@ -258,6 +277,15 @@ At sequencing depths up to 500x, the 95\% confidence intervals on PMAR distribut
 When we calculate the degree of distribution overlap (a proxy for classification error rate), we see required sequencing depths in excess of 8,000x for low fetal fraction samples (\cref{fig:binDist}B).
 We, therefore, cannot expect cell-free sequencing to reliably differentiate genotypes without substantially higher depth or additional genetic information.
 No amount of cleverness in the analysis can overcome the fundamental variance bounds when estimating binomial proportions.
+
+\added{
+We acknowledge the three cases included do not provide information about diagnostic yield and only partially address feasibility.
+Genetic counselors referred the cases to our study prior to knowing the genetic diagnosis.
+Of the three cases, only Case 2 presented the opportunity to identify the genetic diagnosis using cfES.
+One case had an exon deletion not covered by the exome panel used, and one case still does not have a genetic diagnosis.
+Even had the exome panel covered the exon deletion in Case 1, detecting copy number variants falls outside the scope of allele ratio analysis.
+The cases presented do highlight key issues with cfES.
+}
 
 The sequencing herein suffers from three problems: (1) inadequate sequencing depth; (2) biased PMAR values from the removal of duplicate reads; (3) errors in sequencing and/or PCR.
 We have already illustrated the inadequate depth, but emphasize that the theoretical results we present speak to the final depths (not the raw sequencing depth).
@@ -295,6 +323,9 @@ Dayne Filer was supported by NICHD (F30HD101228) and by NIGMS (5T32GM067553).
 \newpage
 \section*{Word count}
 \wordcount
+
+\newpage
+\listofchanges
 
 \end{document}
 
