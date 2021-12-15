@@ -5,8 +5,9 @@
 \usepackage{url}
 \usepackage[blocks]{authblk}
 \usepackage[]{lineno}
-\usepackage[superscript]{cite}
 \usepackage{xcite}
+\usepackage[superscript]{cite}
+% \usepackage[maxbibnames=4,backend=bibtex]{biblatex}
 \usepackage{array}
 \usepackage{booktabs}
 \usepackage{tabularx}
@@ -14,17 +15,14 @@
 \usepackage[dvipsnames]{xcolor}
 \usepackage[colorlinks=true,urlcolor=darkgray,implicit=false]{hyperref}
 \usepackage{cleveref}
-\usepackage[defaultcolor=red]{changes}
+
+% \addbibresource{/Users/dayne/Github/mybibs/myBib.bib}
 
 % Formatting
 \setlength\parindent{0pt}
 \setlength{\parskip}{1em}
 \usepackage{setspace}
 %\doublespacing
-
-% rev2
-\definechangesauthor[color=purple]{r2}
-\setauthormarkuptext{}
 
 % Run texcount on tex-file and write results to a sum-file
 \immediate\write18{texcount \jobname.tex -out=\jobname.sum}
@@ -33,8 +31,20 @@
 \newcommand\wordcount{\verbatiminput{\jobname.sum}}
 
 <<echo=FALSE,results='hide',message=FALSE,error=FALSE,warning=FALSE>>=
+## Knitr settings
+knitr::opts_chunk$set(
+  echo      = FALSE,
+  warning   = FALSE,
+  message   = FALSE,
+  error     = FALSE,
+  results = 'hide'
+)
+
+## Load packages
 library(data.table)
 library(filer2020B)
+library(dlfUtils)
+
 data(readSmry)
 rs <- readSmry$summary
 rs[ , pctDup := round(pctDup, 2)]
@@ -70,7 +80,7 @@ setkey(c3tbl, fet)
 
 \maketitle
 
-\linenumbers
+\textbf{Conflicts of interest:} The named authors have no conflict of interest, financial or otherwise. Neeta Vora, Bradford Powell, and Kelly Gilmore receive in-kind research supplies from Illumina for an unrelated NIH grant; in-kind supplies were not used for the work in this manuscript.
 
 \section*{Bulleted statements}
 
@@ -98,6 +108,8 @@ Results: We found poor resolution of maternal and fetal genotypes due to both sa
 
 Conclusion: We find broad sequencing modalities inefficient for noninvasive prenatal applications.
 Alternatively, we suggest a more targeted path forward for noninvasive prenatal genotyping.
+
+\textbf{Keywords:} exome sequencing, noninvasive, cell-free DNA
 
 \section{Introduction}
 
@@ -152,30 +164,6 @@ Allele depths, with the alleles masked and genomic location rounded to 10 kiloba
 
 \section{Results}
 
-\begin{table}
-  \centering
-  \begin{tabular}[t]{
-  >{\raggedright}p{\dimexpr 0.03\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
-  >{\raggedright}p{\dimexpr 0.09\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
-  >{\raggedright}p{\dimexpr 0.26\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
-  >{\raggedright}p{\dimexpr 0.26\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
-  >{\raggedright}p{\dimexpr 0.09\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
-  >{\raggedright}p{\dimexpr 0.09\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
-  >{\raggedright}p{\dimexpr 0.09\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
-  >{\raggedright\arraybackslash}p{\dimexpr 0.09\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
-  }
-  \toprule
-   & GA & Clinical findings & Genetic diagnosis & FF & Depth & \%Dup & \%Filt \\
-  \midrule
-   1 & 32w2d & 5 prior pregnancies affected with X-linked recessive Menke's syndrome & Menke's syndrome; del. ATP7A exon 1 & \Sexpr{rs[smp == "S1", ff]} & \Sexpr{rs[smp == "S1", md]} & \Sexpr{rs[smp == "S1", pctDup]} & \Sexpr{rs[smp == "S1", pctFlt]} \\
-   2 & 24w5d & Fetal sonogram at 21w5d showed femoral bowing with shortened length (<3\% for GA) bilaterally & Osteogenesis imperfecta type VIII; P3H1 c.1120G>T (rs140468248) & \Sexpr{rs[smp == "S2", ff]} & \Sexpr{rs[smp == "S2", md]} & \Sexpr{rs[smp == "S2", pctDup]} & \Sexpr{rs[smp == "S2", pctFlt]} \\
-   3 & 34w0d & Fetal sonogram at 19w0d showed bilateral club foot with bilateral upper limb arthrogryposis & None, to date, despite exome and genome sequencing of newborn & \Sexpr{rs[smp == "FES-0034-4", ff]} & \Sexpr{rs[smp == "FES-0034-4", md]} & \Sexpr{rs[smp == "FES-0034-4", pctDup]} & \Sexpr{rs[smp == "FES-0034-4", pctFlt]} \\
-  \bottomrule
-  \end{tabular}
-  \caption{Case summaries. GA: gestational age at the time of blood draw for cfES. FF: estimated fetal fraction. Depth: median depth used to estimate genotypes (does not include duplicated/filtered reads). \%Dup: percentage of total mapped read pairs discarded as PCR and/or optical duplicates. \%Filt: percentage of total mapped read pairs discarded for improper pairing and/or mapping quality.}
-  \label{tab:cases}
-\end{table}
-
 Using the final set of filtered reads, we analyzed single nucleotide loci with >80x coverage and at least 5 reads supporting the alternate allele.
 At each analyzed site, we alternate allele sequencing depth and total sequencing depth to estimate the fetal fraction and maternal-fetal genotypes using our novel algorithm (\cref{fig:genoHist}).
 \Cref{tab:cases} lists the known genetic diagnoses for the three cases presented.
@@ -204,70 +192,17 @@ Returning to Case 3, we interrogated the fetal genotyping accuracy at all sites 
 Overall, we found a \Sexpr{round(c3Calls[!is.na(fet) & !is.na(cff), sum(N[fet == cff])/sum(N)*100], 2)}\% accuracy (\cref{tab:c3calls}).
 We provide the complete set of calls within the R package, and a summary within the supplemental document.
 
-\begin{table}
-  \centering
-  \begin{tabular}{llrrr}
-  \toprule
-   & & \multicolumn{3}{c}{Cell-free} \\
-   & & aa & ab & bb \\
-   \midrule
-   \multirow{3}{*}{Fetal} & aa & \Sexpr{c3tbl["0/0", get("0/0")]} & \Sexpr{c3tbl["0/0", get("0/1")]} & \Sexpr{c3tbl["0/0", get("1/1")]} \\
-   & ab & \Sexpr{c3tbl["0/1", get("0/0")]} & \Sexpr{c3tbl["0/1", get("0/1")]} & \Sexpr{c3tbl["0/1", get("1/1")]} \\
-   & bb & \Sexpr{c3tbl["1/1", get("0/0")]} & \Sexpr{c3tbl["1/1", get("0/1")]} & \Sexpr{c3tbl["1/1", get("1/1")]} \\
-  \bottomrule
-  \end{tabular}
-  \caption{Case 3 fetal versus cell-free calls. `a' represents the major allele; `b' represents the minor allele. Sites with cell-free estimates and reliable direct fetal calls included (reliable defied as passing all quality checks and having a total sequencing depth greater than 30).}
-  \label{tab:c3calls}
-\end{table}
-
-\begin{figure}
-  \centering
-  \includegraphics{fig-genoHist-1.pdf}%
-  \includegraphics{fig-genoHist-2.pdf}%
-  \includegraphics{fig-genoHist-3.pdf}
-  \includegraphics{fig-genoLgnd-1.pdf}
-  \caption{Distribution of observed proportion of minor allele reads (PMAR) values for the three cases across the possible maternal-fetal genotype pairs. Uppercase letters give the estimated maternal genotype, lowercase letters give the estimated fetal genotype; `A/a' indicates the reference allele, `B/b' indicates the alternate allele. Solid lines show the normal approximation for the theoretical distribution of binomial probabilities, given the frequency of the estimated genotypes. The vertical line in [B] shows the observed PMAR for the known pathogenic variant, rs140468248.}
-  \label{fig:genoHist}
-\end{figure}
-
-\begin{figure}
-  \centering
-  \includegraphics{fig-f34FragLen-1.pdf}%
-  \includegraphics{fig-f34FragLen-2.pdf}
-  \includegraphics{fig-fragLgnd-1.pdf}
-  \caption{Distribution of maternal versus fetal fragment length in Case 3. [A] shows the density; [B] shows the emperic cumulative distribution. The horiztonal axis shows the fragment length (insert size taken from aligned read-pairs). Blue lines show maternal reads, orange lines show fetal reads. We only included cfES reads supporting alleles unique to the mother or fetus, as identified from the direct maternal and fetal ES.}
-  \label{fig:c3fragLen}
-\end{figure}
-
-\begin{figure}
-  \centering
-  \includegraphics{fig-pmarBySratio-1.pdf}%
-  \includegraphics{fig-pmarBySratio-2.pdf}%
-  \includegraphics{fig-pmarBySratio-3.pdf}
-  \caption{Proportion of minor allele reads (PMAR) as a function of the short read proportion for genotypes estimated as `AAab.' Short reads defined as fragments less than 140 basepairs. [A-C] show Cases 1 to 3, respectively. Gray points show the individual sites; blue contour lines show the two-dimensional distribution of values.}
-  \label{fig:pmarBySratio}
-\end{figure}
-
 \section{Discussion}
 
-To move NBS into the \replaced{fetal}{neonatal} period we must develop noninvasive methodologies agnostic to paternity.
-\added{Having prenatal genetic diagnoses will allow for optimized care in the immediate newborn period and the further development of \emph{in utero} therapies.}
+To move NBS into the fetal period we must develop noninvasive methodologies agnostic to paternity.
+Having prenatal genetic diagnoses will allow for optimized care in the immediate newborn period and the further development of \emph{in utero} therapies.
 Invasive testing confers very minimal risk when performed by properly trained specialists \cite{salomon:2019aa}, but procedure costs and limited availability prohibit universal access for patients.
-We must also recognize the ethical issues with requiring the biological father in neonatal genetic screening programs\replaced{; many family structures do not include the biological father and requiring both parents to miss work for multiple appointments may exclude low-income parents.}{, including the financial burden of the father missing work for additional appointments.}
+We must also recognize the ethical issues with requiring the biological father in neonatal genetic screening programs; many family structures do not include the biological father and requiring both parents to miss work for multiple appointments may exclude low-income parents.
 From our own clinical experience, we find women hesitant to undergo invasive testing even in the presence of severe fetal findings.
 
 Without the ability to reliably exclude maternal DNA fragments, noninvasive sequencing-based methods to genotype the fetus either require additional sequencing of parental samples or distinguishing genotypes by the proportion of minor allele reads (PMAR).
 Here, we make no attempt to utilize parental genetic information and demonstrate the difficulty of inferring the genotypes directly from the PMAR.
 We model the PMAR as a binomial proportion; given the fetal fraction, one can prove the true PMAR defines the maternal and fetal genotypes (supplemental document).
-
-\begin{figure}
-  \centering
-  \includegraphics{fig-binDist-1.pdf}%
-  \includegraphics{fig-binDist-2.pdf}
-  \includegraphics{fig-genoLgnd-1.pdf}
-  \caption{Binomial distribution limitations. [A] 95\% confidence intervals on the binomial proportions for possible maternal-fetal genotype pairs across increasing fetal fractions; represents a sequencing depth of 500x. Average fetal fractions by gestational age (in weeks) given in light gray \cite{kinnings:2015aa}. [B] Expected misclassification rate (Weitzman overlapping coefficient; i.e. the area of overlapping distributions in [A]) considering ABab versus ABbb as a function of sequencing depth and fetal fraction. The dashed horizontal line shows 5\% error. The theoretical error rates for ABab vs ABaa are symmetric and equal; however, the frequency of errors will depend on the population frequency of the reference versus alternate allele.}
-  \label{fig:binDist}
-\end{figure}
 
 The theoretical bounds of the binomial distribution, therefore, confine our ability to discriminate maternal-fetal genotypes.
 Using the normal approximation for the binomial variance (valid when the number of observations, i.e. sequencing depth, times the binomial proportion, i.e. PMAR, is greater than 10), we can clearly explain the poor results we observed (\cref{fig:binDist}).
@@ -308,17 +243,126 @@ Doing so, we hope, will foster population-level screening for Mendelian disorder
 
 \nolinenumbers
 
+\section*{Tables and figure legends}
+
+\begin{table}[h!]
+  \centering
+  \begin{tabular}[t]{
+  >{\raggedright}p{\dimexpr 0.03\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
+  >{\raggedright}p{\dimexpr 0.09\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
+  >{\raggedright}p{\dimexpr 0.26\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
+  >{\raggedright}p{\dimexpr 0.26\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
+  >{\raggedright}p{\dimexpr 0.09\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
+  >{\raggedright}p{\dimexpr 0.09\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
+  >{\raggedright}p{\dimexpr 0.09\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
+  >{\raggedright\arraybackslash}p{\dimexpr 0.09\linewidth-2\tabcolsep-1.125\arrayrulewidth\relax}
+  }
+  \toprule
+   & GA & Clinical findings & Genetic diagnosis & FF & Depth & \%Dup & \%Filt \\
+  \midrule
+   1 & 32w2d & 5 prior pregnancies affected with X-linked recessive Menke's syndrome & Menke's syndrome; del. ATP7A exon 1 & \Sexpr{rs[smp == "S1", ff]} & \Sexpr{rs[smp == "S1", md]} & \Sexpr{rs[smp == "S1", pctDup]} & \Sexpr{rs[smp == "S1", pctFlt]} \\
+   2 & 24w5d & Fetal sonogram at 21w5d showed femoral bowing with shortened length (<3\% for GA) bilaterally & Osteogenesis imperfecta type VIII; P3H1 c.1120G>T (rs140468248) & \Sexpr{rs[smp == "S2", ff]} & \Sexpr{rs[smp == "S2", md]} & \Sexpr{rs[smp == "S2", pctDup]} & \Sexpr{rs[smp == "S2", pctFlt]} \\
+   3 & 34w0d & Fetal sonogram at 19w0d showed bilateral club foot with bilateral upper limb arthrogryposis & None, to date, despite exome and genome sequencing of newborn & \Sexpr{rs[smp == "FES-0034-4", ff]} & \Sexpr{rs[smp == "FES-0034-4", md]} & \Sexpr{rs[smp == "FES-0034-4", pctDup]} & \Sexpr{rs[smp == "FES-0034-4", pctFlt]} \\
+  \bottomrule
+  \end{tabular}
+  \caption{Case summaries. GA: gestational age at the time of blood draw for cfES. FF: estimated fetal fraction. Depth: median depth used to estimate genotypes (does not include duplicated/filtered reads). \%Dup: percentage of total mapped read pairs discarded as PCR and/or optical duplicates. \%Filt: percentage of total mapped read pairs discarded for improper pairing and/or mapping quality.}
+  \label{tab:cases}
+\end{table}
+
+\begin{table}[h!]
+  \centering
+  \begin{tabular}{llrrr}
+  \toprule
+   & & \multicolumn{3}{c}{Cell-free} \\
+   & & aa & ab & bb \\
+   \midrule
+   \multirow{3}{*}{Fetal} & aa & \Sexpr{c3tbl["0/0", get("0/0")]} & \Sexpr{c3tbl["0/0", get("0/1")]} & \Sexpr{c3tbl["0/0", get("1/1")]} \\
+   & ab & \Sexpr{c3tbl["0/1", get("0/0")]} & \Sexpr{c3tbl["0/1", get("0/1")]} & \Sexpr{c3tbl["0/1", get("1/1")]} \\
+   & bb & \Sexpr{c3tbl["1/1", get("0/0")]} & \Sexpr{c3tbl["1/1", get("0/1")]} & \Sexpr{c3tbl["1/1", get("1/1")]} \\
+  \bottomrule
+  \end{tabular}
+  \caption{Case 3 fetal versus cell-free calls. `a' represents the major allele; `b' represents the minor allele. Sites with cell-free estimates and reliable direct fetal calls included (reliable defied as passing all quality checks and having a total sequencing depth greater than 30).}
+  \label{tab:c3calls}
+\end{table}
+
+<<>>=
+l <- list(list(path = "fig-genoHist-1.pdf", width = 0.33),
+          list(path = "fig-genoHist-2.pdf", width = 0.33),
+          list(path = "fig-genoHist-3.pdf", width = 0.33, newline = TRUE),
+          list(path = "fig-genoLgnd-1.pdf", width = 1, newline = TRUE))
+stitchPlots(figLst = l,
+            width = 6.75,
+            height = 2.4,
+            figname = "figure1.pdf")
+@
+
+\begin{figure}[h!]
+  \centering
+  % \includegraphics{figure1.pdf}
+  \caption{Distribution of observed proportion of minor allele reads (PMAR) values for the three cases across the possible maternal-fetal genotype pairs. Uppercase letters give the estimated maternal genotype, lowercase letters give the estimated fetal genotype; `A/a' indicates the reference allele, `B/b' indicates the alternate allele. Solid lines show the normal approximation for the theoretical distribution of binomial probabilities, given the frequency of the estimated genotypes. The vertical line in [B] shows the observed PMAR for the known pathogenic variant, rs140468248.}
+  \label{fig:genoHist}
+\end{figure}
+
+<<>>=
+l <- list(list(path = "fig-f34FragLen-1.pdf", width = 0.5),
+          list(path = "fig-f34FragLen-2.pdf", width = 0.5, newline = TRUE),
+          list(path = "fig-fragLgnd-1.pdf", width = 1, newline = TRUE))
+stitchPlots(figLst = l,
+            width = 6.76,
+            height = 2.65,
+            figname = "figure2.pdf")
+@
+
+\begin{figure}[h!]
+  \centering
+  % \includegraphics{figure2.pdf}
+  \caption{Distribution of maternal versus fetal fragment length in Case 3. [A] shows the density; [B] shows the emperic cumulative distribution. The horiztonal axis shows the fragment length (insert size taken from aligned read-pairs). Blue lines show maternal reads, orange lines show fetal reads. We only included cfES reads supporting alleles unique to the mother or fetus, as identified from the direct maternal and fetal ES.}
+  \label{fig:c3fragLen}
+\end{figure}
+
+<<>>=
+l <- list(list(path = "fig-pmarBySratio-1.pdf", width = 0.33),
+          list(path = "fig-pmarBySratio-2.pdf", width = 0.33),
+          list(path = "fig-pmarBySratio-3.pdf", width = 0.33, newline = TRUE))
+stitchPlots(figLst = l,
+            width = 6.75,
+            height = 2.25,
+            figname = "figure3.pdf")
+@
+
+
+\begin{figure}[h!]
+  \centering
+  % \includegraphics{figure3.pdf}
+  \caption{Proportion of minor allele reads (PMAR) as a function of the short read proportion for genotypes estimated as `AAab.' Short reads defined as fragments less than 140 basepairs. [A-C] show Cases 1 to 3, respectively. Gray points show the individual sites; blue contour lines show the two-dimensional distribution of values.}
+  \label{fig:pmarBySratio}
+\end{figure}
+
+<<>>=
+l <- list(list(path = "fig-binDist-1.pdf", width = 0.5),
+          list(path = "fig-binDist-2.pdf", width = 0.5, newline = TRUE),
+          list(path = "fig-genoLgnd-1.pdf", width = 1, newline = TRUE))
+stitchPlots(figLst = l,
+            width = 6.76,
+            height = 2.9,
+            figname = "figure4.pdf")
+@
+
+\begin{figure}[h!]
+  \centering
+  % \includegraphics{figure4.pdf}
+  \caption{Binomial distribution limitations. [A] 95\% confidence intervals on the binomial proportions for possible maternal-fetal genotype pairs across increasing fetal fractions; represents a sequencing depth of 500x. Average fetal fractions by gestational age (in weeks) given in light gray \cite{kinnings:2015aa}. [B] Expected misclassification rate (Weitzman overlapping coefficient; i.e. the area of overlapping distributions in [A]) considering ABab versus ABbb as a function of sequencing depth and fetal fraction. The dashed horizontal line shows 5\% error. The theoretical error rates for ABab vs ABaa are symmetric and equal; however, the frequency of errors will depend on the population frequency of the reference versus alternate allele.}
+  \label{fig:binDist}
+\end{figure}
+
 \section*{Acknowledgements}
 We thank Dr. James Evans for providing review and feedback of this manuscript.
 Neeta Vora and this work was supported by NICHD (K23HD088742).
 Dayne Filer was supported by NICHD (F30HD101228) and by NIGMS (5T32GM067553).
 
-\bibliographystyle{unsrt}
-\bibliography{myBib.bib}
-
-\newpage
-\section*{Word count}
-\wordcount
+\bibliographystyle{unsrt4}
+\bibliography{filer2020B.bib}
+% \printbibliography
 
 \end{document}
 
